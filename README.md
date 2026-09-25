@@ -12,7 +12,7 @@ Nav2:
 
 ```bash
 mkdir -p ~/go2_nav_ws/src
-cp -r go2_nav_bridge ~/go2_nav_ws/src/
+git clone https://github.com/KrepsD/Go2-Nav2-Slam-adaptor.git
 ```
 
 The `unitree_api` package must already be built and sourced. On the GO2 this is

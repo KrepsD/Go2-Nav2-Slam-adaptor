@@ -23,6 +23,21 @@ def generate_launch_description():
                 'use_message_frames': True,
             }],
         ),
+
+        # Static TF: base_link -> hesai_lidar
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_link_to_hesai_lidar',
+            output='screen',
+            arguments=[
+                '0', '0', '0',
+                '0', '0', '0',
+                'base_link',
+                'hesai_lidar',
+            ],
+        ),
+
         Node(
             package='pointcloud_to_laserscan',
             executable='pointcloud_to_laserscan_node',
@@ -30,10 +45,11 @@ def generate_launch_description():
             output='screen',
             parameters=[cloud_config],
             remappings=[
-                ('cloud_in', '/utlidar/cloud_deskewed'),
+                ('cloud_in', '/lidar_points'),
                 ('scan', '/scan'),
             ],
         ),
+
         Node(
             package='go2_nav_bridge',
             executable='cmd_vel_sport_adapter',

@@ -5,6 +5,8 @@ bt_navigator:
     robot_base_frame: base_link
     odom_topic: /utlidar/robot_odom
 
+    default_bt_xml_filename: /opt/ros/foxy/share/nav2_bt_navigator/behavior_trees/navigate_w_replanning_and_recovery.xml
+
     plugin_lib_names:
       - nav2_compute_path_to_pose_action_bt_node
       - nav2_follow_path_action_bt_node
@@ -31,8 +33,7 @@ bt_navigator:
       - nav2_goal_updater_node_bt_node
       - nav2_navigate_to_pose_action_bt_node
 
-    bt_loop_duration: 10
-    default_server_timeout: 20
+    transform_tolerance: 0.1
 
 controller_server:
   ros__parameters:

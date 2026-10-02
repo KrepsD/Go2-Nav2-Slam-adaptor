@@ -18,9 +18,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(slam_launch),
-        ),
-        IncludeLaunchDescription(
             PythonLaunchDescriptionSource(navigation_launch),
             launch_arguments={
                 'use_sim_time': 'false',

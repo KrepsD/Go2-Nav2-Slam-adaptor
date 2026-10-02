@@ -36,7 +36,7 @@ private:
   void odomCallback(const nav_msgs::msg::Odometry::SharedPtr msg)
   {
     geometry_msgs::msg::TransformStamped transform;
-    transform.header.stamp = msg->header.stamp;
+    transform.header.stamp = this->now();
 
     if (use_message_frames_) {
       transform.header.frame_id = msg->header.frame_id.empty() ? parent_frame_ : msg->header.frame_id;

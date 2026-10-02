@@ -10,11 +10,23 @@ def generate_launch_description():
     bridge_share = get_package_share_directory('go2_nav_bridge')
     nav2_share = get_package_share_directory('nav2_bringup')
 
-    slam_launch = os.path.join(bridge_share, 'launch', 'slam.launch.py')
     navigation_launch = os.path.join(
-        nav2_share, 'launch', 'navigation_launch.py')
+        nav2_share,
+        'launch',
+        'navigation_launch.py'
+    )
+
     nav2_params = os.path.join(
-        bridge_share, 'config', 'nav2_params.yaml')
+        bridge_share,
+        'config',
+        'nav2_params.yaml'
+    )
+
+    bt_xml = os.path.join(
+        '/opt/ros/foxy/share/nav2_bt_navigator',
+        'behavior_trees',
+        'navigate_w_replanning_and_recovery.xml'
+    )
 
     return LaunchDescription([
         IncludeLaunchDescription(
@@ -23,6 +35,7 @@ def generate_launch_description():
                 'use_sim_time': 'false',
                 'autostart': 'true',
                 'params_file': nav2_params,
+                'default_bt_xml_filename': bt_xml,
                 'use_respawn': 'false',
             }.items(),
         ),

@@ -2,6 +2,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import TimerAction
 from launch_ros.actions import Node
 
 
@@ -11,6 +12,7 @@ def generate_launch_description():
         package_share, 'config', 'pointcloud_to_laserscan.yaml')
 
     return LaunchDescription([
+
         Node(
             package='go2_nav_bridge',
             executable='odom_tf_broadcaster',
@@ -38,15 +40,21 @@ def generate_launch_description():
             ],
         ),
 
-        Node(
-            package='pointcloud_to_laserscan',
-            executable='pointcloud_to_laserscan_node',
-            name='pointcloud_to_laserscan',
-            output='screen',
-            parameters=[cloud_config],
-            remappings=[
-                ('cloud_in', '/lidar_points'),
-                ('scan', '/scan'),
+        # Aguarda 5 segundos antes de iniciar o pointcloud_to_laserscan
+        TimerAction(
+            period=5.0,
+            actions=[
+                Node(
+                    package='pointcloud_to_laserscan',
+                    executable='pointcloud_to_laserscan_node',
+                    name='pointcloud_to_laserscan',
+                    output='screen',
+                    parameters=[cloud_config],
+                    remappings=[
+                        ('cloud_in', '/lidar_points'),
+                        ('scan', '/scan'),
+                    ],
+                ),
             ],
         ),
 

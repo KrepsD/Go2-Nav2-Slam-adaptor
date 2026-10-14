@@ -1,6 +1,6 @@
 # GO2 Nav Bridge — ROS 2 Foxy
 
-ROS 2 Foxy integration for autonomous navigation and SLAM on the Unitree GO2 EDU using a Hesai LiDAR, `slam_toolbox`, Nav2, and the GO2 Sport API.
+ROS 2 Foxy integration for autonomous navigation and SLAM on the Unitree GO2 EDU using a Hesai XT16 LiDAR, `slam_toolbox`, Nav2, and the GO2 Sport API.
 
 This repository contains the interfaces and configuration used to integrate:
 
@@ -77,8 +77,6 @@ The Unitree ROS 2 interfaces must also already be available and sourced so that 
 
 An important detail of this setup is that the physical reference frame of the Hesai LiDAR is not aligned with the GO2 body reference frame.
 
-During testing, an obstacle physically located in front of the robot appeared approximately 90 degrees away in the generated LaserScan.
-
 A static transform is therefore applied between:
 
 ```text
@@ -107,8 +105,7 @@ arguments=[
     'hesai_lidar',
 ]
 ```
-
-This correction was experimentally verified using LaserScan measurements around the physical robot.
+This transformation assumes that the LiDAR connection cable is pointing toward the rear of the GO2 robot.
 
 If the LiDAR mounting position or orientation is different, this transform must be measured and adjusted accordingly.
 

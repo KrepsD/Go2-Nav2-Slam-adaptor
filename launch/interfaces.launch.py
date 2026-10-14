@@ -3,18 +3,55 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import TimerAction, ExecuteProcess
+from launch.actions import TimerAction, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
 
-    package_share = get_package_share_directory('go2_nav_bridge')
+    # ------------------------------------------------------------
+    # Package paths
+    # ------------------------------------------------------------
+
+    go2_nav_bridge_share = get_package_share_directory(
+        'go2_nav_bridge'
+    )
+
+    hesai_share = get_package_share_directory(
+        'hesai_ros_driver'
+    )
+
+    go2_odometry_share = get_package_share_directory(
+        'go2_odometry'
+    )
+
+    # ------------------------------------------------------------
+    # Configuration files
+    # ------------------------------------------------------------
 
     cloud_config = os.path.join(
-        package_share,
+        go2_nav_bridge_share,
         'config',
         'pointcloud_to_laserscan.yaml'
+    )
+
+    hesai_launch_file = os.path.join(
+        hesai_share,
+        'launch',
+        'start.py'
+    )
+
+    odometry_launch_file = os.path.join(
+        go2_odometry_share,
+        'launch',
+        'go2_odometry_switch.launch.py'
+    )
+
+    nav2_launch_file = os.path.join(
+        go2_nav_bridge_share,
+        'launch',
+        'nav2_mapping.launch.py'
     )
 
     return LaunchDescription([
@@ -25,13 +62,10 @@ def generate_launch_description():
         # Equivalent command:
         # ros2 launch hesai_ros_driver start.py
         # ============================================================
-        ExecuteProcess(
-            cmd=[
-                'ros2', 'launch',
-                'hesai_ros_driver',
-                'start.py',
-            ],
-            output='screen',
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                hesai_launch_file
+            )
         ),
 
         # ============================================================
@@ -41,14 +75,13 @@ def generate_launch_description():
         # ros2 launch go2_odometry go2_odometry_switch.launch.py \
         #     odom_type:=use_full_odom
         # ============================================================
-        ExecuteProcess(
-            cmd=[
-                'ros2', 'launch',
-                'go2_odometry',
-                'go2_odometry_switch.launch.py',
-                'odom_type:=use_full_odom',
-            ],
-            output='screen',
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                odometry_launch_file
+            ),
+            launch_arguments={
+                'odom_type': 'use_full_odom'
+            }.items()
         ),
 
         # ============================================================
@@ -164,13 +197,10 @@ def generate_launch_description():
         TimerAction(
             period=7.0,
             actions=[
-                ExecuteProcess(
-                    cmd=[
-                        'ros2', 'launch',
-                        'go2_nav_bridge',
-                        'nav2_mapping.launch.py',
-                    ],
-                    output='screen',
+                IncludeLaunchDescription(
+                    PythonLaunchDescriptionSource(
+                        nav2_launch_file
+                    )
                 ),
             ],
         ),

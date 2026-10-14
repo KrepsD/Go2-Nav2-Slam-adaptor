@@ -2,13 +2,13 @@ pointcloud_to_laserscan:
   ros__parameters:
     # cloud_deskewed is expressed in odom. The odom TF broadcaster allows the
     # converter to produce a planar scan in the robot frame.
-    target_frame: base_link
+    target_frame: base
     transform_tolerance: 0.10
 
     # These heights are relative to base_link. Tune them in RViz to reject the
     # floor, legs and points that are too high for a 2D navigation costmap.
-    min_height: -0.20
-    max_height: 0.30
+    min_height: 0.10
+    max_height: 0.35
 
     angle_min: -3.14159
     angle_max: 3.14159

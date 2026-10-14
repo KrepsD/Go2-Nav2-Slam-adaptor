@@ -13,19 +13,6 @@ def generate_launch_description():
 
     return LaunchDescription([
 
-        Node(
-            package='go2_nav_bridge',
-            executable='odom_tf_broadcaster',
-            name='go2_odom_tf_broadcaster',
-            output='screen',
-            parameters=[{
-                'odom_topic': '/utlidar/robot_odom',
-                'parent_frame': 'odom',
-                'child_frame': 'base_link',
-                'use_message_frames': True,
-            }],
-        ),
-
         # Static TF: base_link -> hesai_lidar
         Node(
             package='tf2_ros',
@@ -34,8 +21,8 @@ def generate_launch_description():
             output='screen',
             arguments=[
                 '0', '0', '0',
-                '0', '0', '0',
-                'base_link',
+                '1.570796', '0', '0',
+                'base',
                 'hesai_lidar',
             ],
         ),
@@ -66,9 +53,9 @@ def generate_launch_description():
             parameters=[{
                 'cmd_vel_topic': '/cmd_vel',
                 'sport_request_topic': '/api/sport/request',
-                'max_vx': 0.25,
+                'max_vx': 0.80,
                 'max_vy': 0.15,
-                'max_vyaw': 0.40,
+                'max_vyaw': 1.0,
                 'cmd_timeout': 0.40,
                 'enable_lateral_motion': True,
             }],

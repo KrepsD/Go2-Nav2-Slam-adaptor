@@ -1,163 +1,381 @@
 # GO2 Nav Bridge — ROS 2 Foxy
 
-Interfaces required to use the Unitree GO2 EDU topics with `slam_toolbox` and
-Nav2:
+ROS 2 Foxy integration for autonomous navigation and SLAM on the Unitree GO2 EDU using a Hesai LiDAR, `slam_toolbox`, Nav2, and the GO2 Sport API.
 
-- `/utlidar/robot_odom` (`nav_msgs/Odometry`) -> TF `odom -> base_link`;
-- `/utlidar/cloud_deskewed` (`sensor_msgs/PointCloud2`) -> `/scan`;
-- `/cmd_vel` (`geometry_msgs/Twist`) -> `/api/sport/request`;
-- SLAM Toolbox publishes `map -> odom`.
+This repository contains the interfaces and configuration used to integrate:
 
-## 1. Place the package in the workspace
+- Hesai LiDAR data with ROS 2;
+- GO2 odometry;
+- PointCloud-to-LaserScan conversion;
+- SLAM Toolbox;
+- Nav2;
+- ROS 2 `/cmd_vel` commands with the Unitree Sport API.
+
+The current implementation was developed and tested directly on a physical Unitree GO2 EDU.
+
+> **GO2 environment backup**
+>
+> A download link containing files from the configured GO2 environment will be made available soon:
+>
+> **<>**
+>
+> This backup is intended mainly as a reference for users who want to inspect the workspaces, dependencies, configuration files, and general setup used on the robot.
+
+---
+
+## Dependencies
+
+This project was developed using **ROS 2 Foxy**.
+
+### Hesai LiDAR ROS 2 Driver
+
+The Hesai LiDAR driver used in this project is based on the official Hesai ROS 2 repository:
+
+https://github.com/HesaiTechnology/HesaiLidar_ROS_2.0
+
+The driver provides the point cloud used by the navigation stack.
+
+The current setup expects the package:
+
+```text
+hesai_ros_driver
+```
+
+and launches it using:
+
+```bash
+ros2 launch hesai_ros_driver start.py
+```
+
+### GO2 Odometry
+
+The odometry implementation used in this project is provided by the INRIA Paris Robotics Lab:
+
+https://github.com/inria-paris-robotics-lab/go2_odometry
+
+The current setup uses:
+
+```bash
+ros2 launch go2_odometry go2_odometry_switch.launch.py odom_type:=use_full_odom
+```
+
+The odometry node provides the robot pose estimation used by SLAM Toolbox and Nav2, including the:
+
+```text
+odom -> base
+```
+
+transform.
+
+The `unitree_description` package required by the odometry stack is also provided as part of the INRIA GO2 setup.
+
+The Unitree ROS 2 interfaces must also already be available and sourced so that the GO2 Sport API topics and messages can be accessed.
+
+---
+
+## LiDAR Reference Frame
+
+An important detail of this setup is that the physical reference frame of the Hesai LiDAR is not aligned with the GO2 body reference frame.
+
+During testing, an obstacle physically located in front of the robot appeared approximately 90 degrees away in the generated LaserScan.
+
+A static transform is therefore applied between:
+
+```text
+base -> hesai_lidar
+```
+
+with a yaw correction of:
+
+```text
++90 degrees
+```
+
+or:
+
+```text
++1.570796 rad
+```
+
+The transform used in the current setup is:
+
+```python
+arguments=[
+    '0', '0', '0',
+    '1.570796', '0', '0',
+    'base',
+    'hesai_lidar',
+]
+```
+
+This correction was experimentally verified using LaserScan measurements around the physical robot.
+
+If the LiDAR mounting position or orientation is different, this transform must be measured and adjusted accordingly.
+
+---
+
+## Nav2 Configuration
+
+The parameters available in:
+
+```text
+config/nav2_params.yaml
+```
+
+were tuned experimentally on the physical GO2.
+
+They should therefore be considered a tested starting configuration rather than universal values for every GO2.
+
+Several parameters were selected through direct experiments with the robot, including:
+
+- minimum translational velocity;
+- maximum translational velocity;
+- minimum rotational velocity;
+- maximum rotational velocity;
+- acceleration and deceleration limits;
+- DWB controller configuration;
+- goal position and orientation tolerances;
+- progress checker parameters;
+- recovery behavior velocities;
+- robot footprint;
+- local costmap configuration;
+- global costmap configuration;
+- obstacle marking and clearing distances;
+- inflation radius;
+- inflation cost scaling;
+- costmap update and publishing frequencies.
+
+A physical velocity dead zone was observed on the GO2. Commands below a certain magnitude were not sufficient to reliably move the robot.
+
+For this reason, the DWB controller was configured so that Nav2 avoids generating very small translational and rotational commands.
+
+The current controller configuration uses approximately:
+
+```text
+Linear velocity:
+-0.80 m/s to -0.20 m/s
++0.20 m/s to +0.80 m/s
+
+Angular velocity:
+minimum magnitude: 0.50 rad/s
+maximum magnitude: 1.00 rad/s
+```
+
+The local and global costmaps also use different inflation parameters.
+
+The global costmap is configured more conservatively so that the global planner prefers paths farther away from obstacles, while the local costmap allows more flexibility during local maneuvers.
+
+Other parameters, such as obstacle ranges, costmap update rates, goal tolerances, controller sampling, and recovery behavior, were also adjusted based on tests performed with the physical robot.
+
+These values may require additional tuning depending on:
+
+- floor friction;
+- GO2 firmware;
+- robot gait;
+- LiDAR mounting;
+- environment geometry;
+- available navigation space.
+
+---
+
+# Installation
+
+## 1. Create a ROS 2 workspace
 
 ```bash
 mkdir -p ~/go2_nav_ws/src
-git clone https://github.com/KrepsD/Go2-Nav2-Slam-adaptor.git
+cd ~/go2_nav_ws/src
 ```
 
-The `unitree_api` package must already be built and sourced. On the GO2 this is
-normally in the Unitree CycloneDDS workspace.
+## 2. Clone this repository
 
-## 2. Install runtime dependencies
+Clone the `Hesai_Lidar` branch:
+
+```bash
+git clone -b Hesai_Lidar https://github.com/KrepsD/Go2-Nav2-Slam-adaptor.git
+```
+
+The workspace should then contain:
+
+```text
+~/go2_nav_ws/
+└── src/
+    └── Go2-Nav2-Slam-adaptor/
+```
+
+## 3. Make sure the external dependencies are available
+
+Before building this package, the following dependencies should already be installed or built:
+
+- ROS 2 Foxy;
+- Unitree ROS 2 interfaces;
+- Hesai ROS 2 driver:
+  https://github.com/HesaiTechnology/HesaiLidar_ROS_2.0
+- GO2 odometry:
+  https://github.com/inria-paris-robotics-lab/go2_odometry
+- `slam_toolbox`;
+- Nav2;
+- `pointcloud_to_laserscan`.
+
+For the standard ROS 2 packages:
 
 ```bash
 sudo apt update
-sudo apt install ros-foxy-pointcloud-to-laserscan ros-foxy-slam-toolbox
+
+sudo apt install \
+  ros-foxy-navigation2 \
+  ros-foxy-nav2-bringup \
+  ros-foxy-slam-toolbox \
+  ros-foxy-pointcloud-to-laserscan
 ```
 
-Nav2 can be installed after the interfaces and SLAM tests pass:
+## 4. Source the required workspaces
 
-```bash
-sudo apt install ros-foxy-navigation2 ros-foxy-nav2-bringup
-```
+The exact paths depend on your installation.
 
-## 3. Build
-
-Use the same shell setup that already exposes the GO2 topics and
-`unitree_api/msg/Request`.
+For example:
 
 ```bash
 source /opt/ros/foxy/setup.bash
-source ~/unitree_ros2/cyclonedds_ws/install/setup.bash
+source ~/unitree_ros2/install/setup.bash
+source ~/go2_odom_fix/install/setup.bash
+```
+
+If the Hesai driver is installed in another workspace, source it as well.
+
+For example:
+
+```bash
+source ~/hesai_ws/install/setup.bash
+```
+
+## 5. Build the navigation workspace
+
+Go to the workspace:
+
+```bash
 cd ~/go2_nav_ws
+```
+
+Install available ROS dependencies:
+
+```bash
 rosdep install --from-paths src --ignore-src -r -y
-colcon build --symlink-install --packages-select go2_nav_bridge
+```
+
+Build the workspace:
+
+```bash
+colcon build --symlink-install
+```
+
+Source it:
+
+```bash
 source install/setup.bash
 ```
 
-If the Unitree workspace has another location, replace the second `source`.
+---
 
-## 4. Test odometry TF first
+# Running the Complete Stack
 
-Terminal 1:
-
-```bash
-ros2 run go2_nav_bridge odom_tf_broadcaster
-```
-
-Terminal 2:
-
-```bash
-ros2 run tf2_ros tf2_echo odom base_link
-```
-
-The transformation must update continuously. Stop this test before launching
-the combined launch file, otherwise two nodes will publish the same TF.
-
-## 5. Test the PointCloud2 conversion
+Once all dependencies are installed, built, and sourced, the complete navigation and SLAM stack can be started using:
 
 ```bash
 ros2 launch go2_nav_bridge interfaces.launch.py
 ```
 
-`pointcloud_to_laserscan` subscribes lazily, so start a `/scan` subscriber:
+The launch file starts the main components required by the system, including:
 
-```bash
-ros2 topic hz /scan
-ros2 topic echo /scan --once
+```text
+Hesai LiDAR driver
+        |
+        v
+/lidar_points
+        |
+        v
+PointCloud -> LaserScan
+        |
+        v
+/scan
+        |
+        +----------------------+
+        |                      |
+        v                      v
+ SLAM Toolbox             Nav2 costmaps
+        |                      |
+        v                      v
+    map -> odom          obstacle handling
+
+
+GO2 odometry
+        |
+        v
+    odom -> base
+
+
+Nav2
+        |
+        v
+     /cmd_vel
+        |
+        v
+cmd_vel_sport_adapter
+        |
+        v
+/api/sport/request
+        |
+        v
+      GO2
 ```
 
-In RViz, set `Fixed Frame` to `odom` and add `/scan` and
-`/utlidar/cloud_deskewed`. Tune `min_height` and `max_height` in
-`config/pointcloud_to_laserscan.yaml` until the scan contains obstacles but not
-the floor or the robot's legs.
+The launch file also applies the required:
 
-## 6. Test the velocity adapter safely
-
-Use a clear, level test area with nobody within the robot's reach. Start with
-the GO2 standing in Sport mode, keep the remote/emergency stop available, and
-be ready to stop the robot immediately. Do not improvise a support stand.
-
-```bash
-ros2 launch go2_nav_bridge interfaces.launch.py
+```text
+base -> hesai_lidar
 ```
 
-Send a small forward command for a short period:
+rotation and starts the different components with startup delays where required.
 
-```bash
-timeout 1 ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/Twist \
-  "{linear: {x: 0.10, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}"
+The current startup sequence includes the Hesai LiDAR driver, GO2 odometry, SLAM Toolbox, PointCloud-to-LaserScan conversion, and Nav2.
+
+---
+
+## Main Configuration Files
+
+The most relevant files are:
+
+```text
+launch/interfaces.launch.py
+launch/nav2_mapping.launch.py
+
+config/nav2_params.yaml
+config/pointcloud_to_laserscan.yaml
 ```
 
-After the publisher stops, the 0.4 s watchdog sends the Sport `StopMove`
-request. Test yaw only after forward motion works.
+`interfaces.launch.py` is intended to be the main entry point for the complete system.
 
-## 7. Start mapping
+---
 
-Do not run Unitree uSLAM or another process that also publishes `map -> odom`.
+## Notes
 
-```bash
-ros2 launch go2_nav_bridge slam.launch.py
-```
+The configuration in this repository corresponds to the specific GO2 EDU and Hesai LiDAR setup used during development.
 
-Check:
+Before autonomous navigation on another robot, verify:
 
-```bash
-ros2 topic hz /scan
-ros2 topic echo /map --once
-ros2 run tf2_ros tf2_echo map base_link
-```
+- LiDAR orientation;
+- `base -> hesai_lidar` transform;
+- `odom -> base` transform;
+- LaserScan orientation;
+- robot footprint;
+- minimum usable velocity;
+- maximum safe velocity;
+- angular velocity limits;
+- local costmap;
+- global costmap;
+- inflation radius;
+- obstacle detection ranges.
 
-Use RViz with `Fixed Frame = map`. Drive slowly using teleoperation before
-starting Nav2 autonomous control.
+The parameters provided here were obtained through experiments on the physical robot and may not be optimal for every GO2 or environment.
 
-## 8. Nav2 integration
-
-Configure all Nav2 `robot_base_frame`/`base_frame_id` values as `base_link`, and
-all global frames as `map`. Configure local costmap `global_frame` as `odom`.
-Where Nav2 expects `/odom`, remap it to `/utlidar/robot_odom` or set its
-`odom_topic` parameter accordingly.
-
-The GO2 supports lateral velocity, so a holonomic controller may use
-`linear.y`. For the first autonomous tests, disabling lateral motion in
-`interfaces.launch.py` is safer:
-
-```python
-'enable_lateral_motion': False,
-```
-
-The Nav2 footprint and controller limits must be measured/tuned on the physical
-robot before autonomous movement.
-
-After the separate TF, scan, command and SLAM tests pass, start the complete
-mapping/navigation stack:
-
-```bash
-ros2 launch go2_nav_bridge nav2_mapping.launch.py
-```
-
-The supplied `config/nav2_params.yaml` starts conservatively as a
-non-holonomic controller (`max_vel_y: 0.0`). It is an initial bring-up file,
-not final physical-robot tuning. Keep the GO2 in an open test area with the
-remote/emergency stop ready, then send the first goals at short distances.
-
-## Safety and implementation notes
-
-- Sport API `Move` uses API ID `1008` with JSON keys `x`, `y`, `z` for
-  `vx`, `vy`, `vyaw`.
-- Sport API `StopMove` uses API ID `1003`.
-- The adapter clamps all commands and stops after a command timeout.
-- Do not connect Nav2 to `/lowcmd`; that is the joint-level interface.
-- Do not run more than one `odom -> base_link` broadcaster.
-- If the point cloud is dropped because of TF extrapolation, compare the
-  timestamps of `/utlidar/robot_odom` and `/utlidar/cloud_deskewed`.
+Always perform the first autonomous navigation tests in a large open area and keep the GO2 remote control or emergency stop available.

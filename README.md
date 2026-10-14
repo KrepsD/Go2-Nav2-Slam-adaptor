@@ -284,46 +284,24 @@ ros2 launch go2_nav_bridge interfaces.launch.py
 
 The launch file starts the main components required by the system, including:
 
-```text
-Hesai LiDAR driver
-        |
-        v
-/lidar_points
-        |
-        v
-PointCloud -> LaserScan
-        |
-        v
-/scan
-        |
-        +----------------------+
-        |                      |
-        v                      v
- SLAM Toolbox             Nav2 costmaps
-        |                      |
-        v                      v
-    map -> odom          obstacle handling
+```mermaid
+flowchart TD
+    Lidar["Hesai LiDAR driver"] --> Points["/lidar_points"]
+    Points --> Converter["PointCloud → LaserScan"]
+    Converter --> Scan["/scan"]
 
+    Scan --> SLAM["SLAM Toolbox"]
+    Scan --> Costmaps["Nav2 costmaps"]
 
-GO2 odometry
-        |
-        v
-    odom -> base
+    SLAM --> MapTF["TF: map → odom"]
+    Costmaps --> Obstacles["Obstacle handling"]
 
+    Odometry["GO2 odometry"] --> OdomTF["TF: odom → base"]
 
-Nav2
-        |
-        v
-     /cmd_vel
-        |
-        v
-cmd_vel_sport_adapter
-        |
-        v
-/api/sport/request
-        |
-        v
-      GO2
+    Nav2["Nav2"] --> CmdVel["/cmd_vel"]
+    CmdVel --> Adapter["cmd_vel_sport_adapter"]
+    Adapter --> Request["/api/sport/request"]
+    Request --> GO2["GO2"]
 ```
 
 The launch file also applies the required:
